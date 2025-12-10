@@ -3,11 +3,6 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 
-df = pd.read_excel('healthcare-dataset-stroke-data.xlsx')
-pasien_count = df.shape[0]
-pasien_stroke = df['stroke'].sum()
-stroke_rate = (pasien_stroke / pasien_count) * 100
-
 def chart():
     #Card Metrics dan Button Filter
     col1, col2, col3, col4, col5, col6 = st.columns([2,2,3,2,2,1])
