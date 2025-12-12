@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import altair as alt
 
 def chart():
     df = pd.read_excel('healthcare-dataset-stroke-data.xlsx')
@@ -61,154 +60,95 @@ def chart():
     
     #Pie Chart
     col1, col2 = st.columns([5,5])
+    def pie_chart_from_counts(counts_df, label_col, value_col, title):
+        # counts_df must have label_col and value_col
+        chart = alt.Chart(counts_df).mark_arc(innerRadius=40).encode(
+            theta=alt.Theta(field=value_col, type='quantitative'),
+            color=alt.Color(field=label_col, type='nominal', sort=alt.EncodingSortField(field=value_col, order='descending')),
+            tooltip=[alt.Tooltip(label_col+':N'), alt.Tooltip(value_col+':Q')]
+        ).properties(height=300, title=title)
+        return chart
     with col1:
     #Persentase Jenis Kelamin
-        category_df = filtered_df['gender'].value_counts(dropna=False).reset_index()
-        category_df.columns = ['gender', 'count']
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(
-            category_df['count'],
-            labels=category_df['gender'],
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.set_title("Jenis Kelamin")
-        st.pyplot(fig)
+        gender_counts = filtered_df['gender'].fillna('Unknown').value_counts().reset_index()
+        gender_counts.columns = ['gender', 'count']
+        chart_gender = pie_chart_from_counts(gender_counts, 'gender', 'count', 'Jenis Kelamin')
+        st.altair_chart(chart_gender, use_container_width=True)
     
     with col2:
     #Persentase Hipertensi
-        hyper_stroke_count = filtered_df['hypertension'].value_counts().reset_index()
-        hyper_stroke_count.columns = ['hypertension', 'count']
-        hyper_stroke_count['hypertension_label'] = hyper_stroke_count['hypertension'].map({0: 'Tidak', 1: 'Hipertensi'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(
-            hyper_stroke_count['count'],
-            labels=hyper_stroke_count['hypertension_label'],
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.set_title("Hipertensi pada Pasien")
-        st.pyplot(fig)
+        hyper_counts = filtered_df['hypertension'].fillna(0).map({0: 'Tidak', 1: 'Hipertensi'}).value_counts().reset_index()
+        hyper_counts.columns = ['hypertension', 'count']
+        chart_hyper = pie_chart_from_counts(hyper_counts, 'hypertension', 'count', 'Hipertensi pada Pasien')
+        st.altair_chart(chart_hyper, use_container_width=True)
     
     col1, col2 = st.columns([5,5])
     with col1:
     #Persentase Riwayat Merokok
-        smoke_stroke_count = filtered_df['smoking_status'].value_counts(dropna=False).reset_index()
-        smoke_stroke_count.columns = ['smoking_status', 'count']
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(
-            smoke_stroke_count['count'],
-            labels=smoke_stroke_count['smoking_status'],
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.set_title("Riwayat Merokok pada Pasien")
-        st.pyplot(fig)
+        smoke_counts = filtered_df['smoking_status'].fillna('Unknown').value_counts().reset_index()
+        smoke_counts.columns = ['smoking_status', 'count']
+        chart_smoke = pie_chart_from_counts(smoke_counts, 'smoking_status', 'count', 'Riwayat Merokok pada Pasien')
+        st.altair_chart(chart_smoke, use_container_width=True)
     
     with col2:
     #Persentase Tempat Tinggal
-        residence_stroke_count = filtered_df['Residence_type'].value_counts().reset_index()
-        residence_stroke_count.columns = ['Residence_type', 'count']
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        ax.pie(
-            residence_stroke_count['count'],
-            labels=residence_stroke_count['Residence_type'],
-            autopct="%1.1f%%",
-            startangle=90
-        )
-        ax.set_title("Tipe Tempat Tinggal Pasien")
-        st.pyplot(fig)    
+        residence_counts = filtered_df['Residence_type'].fillna('Unknown').value_counts().reset_index()
+        residence_counts.columns = ['Residence_type', 'count']
+        chart_res = pie_chart_from_counts(residence_counts, 'Residence_type', 'count', 'Tipe Tempat Tinggal Pasien')
+        st.altair_chart(chart_res, use_container_width=True)    
 
     #Histogram BMI
-    sns.set_style("whitegrid")
-    sns.set_palette("pastel")
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.histplot(
-        data=filtered_df,
-        x='bmi',
-        bins=30,
-        kde=False,
-        ax=ax
-    )
-    ax.set_title("Distribusi BMI Pasien")
-    ax.set_xlabel("BMI")
-    ax.set_ylabel("Frekuensi")
-    st.pyplot(fig)
+    st.write("**Distribusi BMI Pasien**")
+    bmi_chart = alt.Chart(filtered_df).mark_bar().encode(
+            alt.X('bmi:Q', bin=alt.Bin(maxbins=30), title='BMI'),
+            alt.Y('count():Q', title='Frekuensi'),
+            tooltip=[alt.Tooltip('count():Q', title='Frekuensi')]
+        ).properties(height=300)
+    st.altair_chart(bmi_chart, use_container_width=True)
 
     #Scatter Plot
     #Glukosa vs BMI
-    sns.set_style("whitegrid")
-    sns.set_palette("pastel")
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(
-        data=filtered_df,
-        x='avg_glucose_level',
-        y='bmi',
-        hue='stroke',        # pengganti color=
-        palette='viridis',   # opsional (warna lebih jelas)
-        ax=ax
-    )
-    ax.set_title("Hubungan BMI dan Rata-rata Tingkat Glukosa")
-    ax.set_xlabel("Rata-rata Glukosa")
-    ax.set_ylabel("BMI")
-    st.pyplot(fig)
+    st.write("**Hubungan BMI & Rata-rata Glukosa**")
+    scatter1 = alt.Chart(filtered_df).mark_circle(size=60).encode(
+            x=alt.X('avg_glucose_level:Q', title='Rata-rata Glukosa'),
+            y=alt.Y('bmi:Q', title='BMI'),
+            color=alt.Color('stroke:N', title='Stroke', scale=alt.Scale(scheme='viridis')),
+            tooltip=['age', 'bmi', 'avg_glucose_level', 'stroke']
+        ).interactive().properties(height=320)
+    st.altair_chart(scatter1, use_container_width=True)
     
     #Usia vs BMI
-    sns.set_style("whitegrid")
-    sns.set_palette("pastel")
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(
-        data=filtered_df,
-        x='age',
-        y='bmi',
-        hue='stroke',        # sama seperti color='stroke'
-        palette='viridis',   # opsional untuk warna lebih jelas
-        ax=ax
-    )
-    ax.set_title("Hubungan BMI dan Usia")
-    ax.set_xlabel("Usia")
-    ax.set_ylabel("BMI")
-    st.pyplot(fig)
+    st.write("**Hubungan BMI & Usia**")
+    scatter2 = alt.Chart(filtered_df).mark_circle(size=60).encode(
+            x=alt.X('age:Q', title='Usia'),
+            y=alt.Y('bmi:Q', title='BMI'),
+            color=alt.Color('stroke:N', title='Stroke', scale=alt.Scale(scheme='viridis')),
+            tooltip=['age', 'bmi', 'avg_glucose_level', 'stroke']
+        ).interactive().properties(height=320)
+    st.altair_chart(scatter2, use_container_width=True)
 
 
     #Distribusi Stroke dengan Box Plot
-    sns.set_style("whitegrid")
-    sns.set_palette("pastel")
-    fig, ax = plt.subplots(figsize=(6, 4))
-    sns.boxplot(
-        data=filtered_df,
-        x='stroke',
-        y='age',
-        ax=ax
-    )
-    ax.set_title("Distribusi Usia Pasien dengan Stroke")
-    ax.set_xlabel("Stroke")
-    ax.set_ylabel("Usia")
-    st.pyplot(fig)
+    st.write("**Distribusi Usia Pasien berdasarkan Stroke (Box Plot)**")
+    box = alt.Chart(filtered_df).mark_boxplot(extent=1.5).encode(
+            x=alt.X('stroke:N', title='Stroke'),
+            y=alt.Y('age:Q', title='Usia'),
+            color=alt.Color('stroke:N', legend=None),
+            tooltip=[alt.Tooltip('count():Q', title='Jumlah')]
+        ).properties(height=320)
+    st.altair_chart(box, use_container_width=True)
 
     #Distribusi Usia berdasarkan Kasus Stroke dengan Line Chart
+    st.write("**Distribusi Usia berdasarkan Kasus Stroke**")
     age_stroke_counts = filtered_df.groupby(['age', 'stroke']).size().reset_index(name='counts')
-    sns.set_style("whitegrid")
-    sns.set_palette("pastel")
-    fig, ax = plt.subplots(figsize=(7, 4))
-    sns.lineplot(
-        data=age_stroke_counts,
-        x='age',
-        y='counts',
-        hue='stroke',
-        marker='o',
-        ax=ax
-    )
-    ax.set_title("Distribusi Usia berdasarkan Kasus Stroke")
-    ax.set_xlabel("Usia")
-    ax.set_ylabel("Jumlah Pasien")
-    st.pyplot(fig)     
+    age_stroke_counts['stroke'] = age_stroke_counts['stroke'].astype(str)
+    line_age = alt.Chart(age_stroke_counts).mark_line(point=True).encode(
+        x=alt.X('age:Q', title='Usia'),
+        y=alt.Y('counts:Q', title='Jumlah Pasien'),
+        color=alt.Color('stroke:N', title='Stroke'),
+        tooltip=['age', 'counts', 'stroke']
+    ).properties(height=350)
+    st.altair_chart(line_age, use_container_width=True)
 
     #Perkembangan Penderita Stroke dan Perbandingan Berdasarkan Kategori
     col1, col2 = st.columns([5,5])
@@ -216,157 +156,69 @@ def chart():
     #Berdasarkan BMI Category
         st.write('**Perkembangan Penderita Stroke**')
         bmi_stroke_counts = filtered_df.groupby(['bmi_category', 'stroke']).size().reset_index(name='counts')
-        bmi_stroke_counts['stroke_label'] = bmi_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.lineplot(
-            data=bmi_stroke_counts,
-            x='bmi_category',
-            y='counts',
-            hue='stroke_label',
-            marker='o',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan BMI Category")
-        ax.set_xlabel("BMI Category")
-        ax.set_ylabel("Jumlah Pasien")
-        # Legend horizontal di atas grafik
-        ax.legend(
-            title="", 
-            loc="lower center",
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        bmi_stroke_counts['stroke_label'] = bmi_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_bmi_cat = alt.Chart(bmi_stroke_counts).mark_line(point=True).encode(
+            x=alt.X('bmi_category:N', sort=alt.EncodingSortField(field='counts', op='sum', order='descending'), title='BMI Category'),
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['bmi_category', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_bmi_cat, use_container_width=True)
 
     
     #Berdasarkan kolom 'age_category'
         age_cat_stroke_counts = filtered_df.groupby(['age_category', 'stroke']).size().reset_index(name='counts')
-        age_cat_stroke_counts['stroke_label'] = age_cat_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.lineplot(
-            data=age_cat_stroke_counts,
-            x='age_category',
-            y='counts',
-            hue='stroke_label',
-            marker='o',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan Age Category")
-        ax.set_xlabel("Age Category")
-        ax.set_ylabel("Jumlah Pasien")
-        ax.legend(
-            title="",
-            loc='lower center',
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        age_cat_stroke_counts['stroke_label'] = age_cat_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_age_cat = alt.Chart(age_cat_stroke_counts).mark_line(point=True).encode(
+            x=alt.X('age_category:N', title='Age Category'),
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['age_category', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_age_cat, use_container_width=True)
     
     #Berdasarkan Resiko Stroke
         risk_stroke_counts = filtered_df.groupby(['risk_score', 'stroke']).size().reset_index(name='counts')
-        risk_stroke_counts['stroke_label'] = risk_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.lineplot(
-            data=risk_stroke_counts,
-            x='risk_score',
-            y='counts',
-            hue='stroke_label',
-            marker='o',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan Risk Category")
-        ax.set_xlabel("Risk Score")
-        ax.set_ylabel("Jumlah Pasien")
-        ax.legend(
-            title="",
-            loc='lower center',
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        risk_stroke_counts['stroke_label'] = risk_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_risk = alt.Chart(risk_stroke_counts).mark_line(point=True).encode(
+            x=alt.X('risk_score:O', title='Risk Score'),  # treat as ordinal if discrete
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['risk_score', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_risk, use_container_width=True)
     
     with col2:
         st.write('**Perbandingan Berdasarkan Kategori**')
     #Berdasarkan Tipe Pekerjaan
         work_stroke_counts = filtered_df.groupby(['work_type', 'stroke']).size().reset_index(name='counts')
-        work_stroke_counts['stroke_label'] = work_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.barplot(
-            data=work_stroke_counts,
-            x='work_type',
-            y='counts',
-            hue='stroke_label',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan Tipe Pekerjaan")
-        ax.set_xlabel("Tipe Pekerjaan")
-        ax.set_ylabel("Jumlah Pasien")
-        ax.legend(
-            title="",
-            loc='lower center',
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        work_stroke_counts['stroke_label'] = work_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_work = alt.Chart(work_stroke_counts).mark_bar().encode(
+            x=alt.X('work_type:N', title='Tipe Pekerjaan'),
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['work_type', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_work, use_container_width=True)
     
     #Berdasarkan Kategori Glukosa
         glucose_stroke_counts = filtered_df.groupby(['glucose_category', 'stroke']).size().reset_index(name='counts')
-        glucose_stroke_counts['stroke_label'] = glucose_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.barplot(
-            data=glucose_stroke_counts,
-            x='glucose_category',
-            y='counts',
-            hue='stroke_label',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan Kategori Glukosa")
-        ax.set_xlabel("Kategori Glukosa")
-        ax.set_ylabel("Jumlah Pasien")
-        ax.legend(
-            title="",
-            loc="lower center",
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        glucose_stroke_counts['stroke_label'] = glucose_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_glucose = alt.Chart(glucose_stroke_counts).mark_bar().encode(
+            x=alt.X('glucose_category:N', title='Kategori Glukosa'),
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['glucose_category', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_glucose, use_container_width=True)
     
     #Berdasarkan Life Style Risk
         lifestyle_stroke_counts = filtered_df.groupby(['lifestyle_risk', 'stroke']).size().reset_index(name='counts')
-        lifestyle_stroke_counts['stroke_label'] = lifestyle_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'})
-        sns.set_style("whitegrid")
-        sns.set_palette("pastel")
-        fig, ax = plt.subplots(figsize=(7, 4))
-        sns.barplot(
-            data=lifestyle_stroke_counts,
-            x='lifestyle_risk',
-            y='counts',
-            hue='stroke_label',
-            ax=ax
-        )
-        ax.set_title("Berdasarkan Life Style Risk")
-        ax.set_xlabel("Life Style Risk")
-        ax.set_ylabel("Jumlah Pasien")
-        ax.legend(
-            title="",
-            loc="lower center",
-            bbox_to_anchor=(0.5, 1.02),
-            ncol=2,
-            frameon=False
-        )
-        st.pyplot(fig)
+        lifestyle_stroke_counts['stroke_label'] = lifestyle_stroke_counts['stroke'].map({0: 'No Stroke', 1: 'Stroke'}).astype(str)
+        chart_lifestyle = alt.Chart(lifestyle_stroke_counts).mark_bar().encode(
+            x=alt.X('lifestyle_risk:N', title='Life Style Risk'),
+            y=alt.Y('counts:Q', title='Jumlah Pasien'),
+            color=alt.Color('stroke_label:N', title='Stroke'),
+            tooltip=['lifestyle_risk', 'counts', 'stroke_label']
+        ).properties(height=300)
+        st.altair_chart(chart_lifestyle, use_container_width=True)
