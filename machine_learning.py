@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+import altair as alt
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
 from imblearn.over_sampling import SMOTE 
 from sklearn.metrics import ConfusionMatrixDisplay
-import seaborn as sns
+
 
 def ml_model():
     df = pd.read_excel('healthcare-dataset-stroke-data.xlsx')
@@ -53,28 +53,26 @@ def ml_model():
     with col1:
     #6.a Visualisasi dengan Density Plot
         st.write('**Sebelum Normalisasi**')
-        rows = 3
-        cols = math.ceil(len(numbers) / rows)
-        plt.figure(figsize=(9, 4 * rows))
-        for i, col in enumerate(numbers):
-            plt.subplot(rows, cols, i + 1)
-            sns.distplot(df[col], kde=True, color='gray')
-            plt.title(col)
-        plt.tight_layout()
-        st.pyplot(plt)
+        for col in numbers:
+            chart = []
+            chart = (
+                alt.Chart(df).transform_density(col,as_=[col, 'density'])
+                .mark_area(opacity=0.5)
+                .encode(x=f"{col}:Q",y="density:Q")
+                .properties(width=350,height=200,title=f"Density Plot: {col}")
+            )
+    st.altair_chart(chart, use_container_width=True)
 
     with col2:
     #6.b Visualisasi dengan Density Plot
         st.write('**Setelah Normalisasi**')
-        rows = 3
-        cols = math.ceil(len(numbers) / rows)
-        plt.figure(figsize=(9, 4 * rows))
-        for i, col in enumerate(numbers):
-            plt.subplot(rows, cols, i + 1)
-            sns.distplot(df_select[col], kde=True, color='gray')
-            plt.title(col)
-        plt.tight_layout()
-        st.pyplot(plt)   
+        for col in numbers:
+            chart = (alt.Chart(df_select).transform_density(col,as_=[col, 'density'])
+                .mark_area(opacity=0.5)
+                .encode(x=f"{col}:Q",y="density:Q")
+                .properties(width=350,height=200,title=f"Density Plot: {col}")
+            )
+    st.altair_chart(chart, use_container_width=True) 
     
     #7. Correlation Heatmap untuk melihat korelasi linear antara kolom-kolom numerik
     st.write('### 3. Korelasi Linear antar Kolom Numerik')
@@ -82,9 +80,22 @@ def ml_model():
     with col1:
     #7.a Correlation Heatmap
         st.write('**Correlation Heatmap**')
-        plt.figure(figsize=(5,5))
-        sns.heatmap(df[numbers].corr(), cmap='Blues', annot=True, fmt='.2f', annot_kws={"size": 8})
-        st.pyplot(plt)
+        corr = df[numbers].corr().reset_index().melt('index')
+        corr.columns = ['Variable1', 'Variable2', 'Correlation']
+        heatmap = (
+            alt.Chart(corr).mark_rect()
+            .encode(
+                x=alt.X('Variable2:N', title=None),
+                y=alt.Y('Variable1:N', title=None),
+                color=alt.Color('Correlation:Q', scale=alt.Scale(scheme='blues')),
+                tooltip=['Variable1', 'Variable2', alt.Tooltip('Correlation:Q', format='.2f')]
+            )
+            .properties(width=400,height=400,title="Correlation Heatmap (Altair)"))
+
+        # Tambahkan nilai angka di dalam kotak
+        text = (alt.Chart(corr).mark_text(fontSize=12, color='black')
+            .encode(x='Variable2:N',y='Variable1:N',text=alt.Text('Correlation:Q', format=".2f")))
+        st.altair_chart(heatmap + text, use_container_width=True)
     
     with col2:
     #7.b Deskripsi Correlation Heatmap
@@ -209,9 +220,22 @@ def ml_model():
     col1, col2 = st.columns([2,2])
     with col1:
         cm = confusion_matrix(y_test, y_pred)
-        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=model.classes_)
-        disp.plot(cmap=plt.cm.Blues)
-        st.pyplot(plt)
+        labels = model.classes_
+        cm_df = pd.DataFrame(cm, columns=labels, index=labels).reset_index().melt(id_vars='index')
+        cm_df.columns = ['Actual', 'Predicted', 'Count']
+        chart = (alt.Chart(cm_df).mark_rect()
+            .encode(
+                x=alt.X("Predicted:N", title="Predicted"),
+                y=alt.Y("Actual:N", title="Actual"),
+                color=alt.Color("Count:Q", scale=alt.Scale(scheme="blues")),
+                tooltip=["Actual", "Predicted", "Count"]
+            )
+        )
+        text = (
+            alt.Chart(cm_df).mark_text(color="black")
+            .encode(x="Predicted:N",y="Actual:N",text="Count:Q"))
+        st.altair_chart(chart + text, use_container_width=True)
+        
     with col2:
         col1, col2 = st.columns(2)
         with col1:
